@@ -21,6 +21,11 @@
         }
         </style>
         <title></title>
+	    <!-- Leaflet Routing Machine -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+	    
     </head>
     <body>
         <div id="map">
@@ -40,6 +45,10 @@
         <script src="data/PathData_2.js"></script>
         <script src="data/PathNodes_3.js"></script>
         <script src="data/MarSUAllBuildings_4.js"></script>
+	    <script>
+let routingControl = null; // This will be reused for every route
+</script>
+
         <script>
         var highlightLayer;
         function highlightFeature(e) {
@@ -246,17 +255,69 @@
         });
         bounds_group.addLayer(layer_PathNodes_3);
         map.addLayer(layer_PathNodes_3);
+		function routeToBuilding(destinationLatLng) {
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(function(position) {
+        const userLatLng = [position.coords.latitude, position.coords.longitude];
+
+        // Remove old route
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(userLatLng[0], userLatLng[1]),
+                L.latLng(destinationLatLng[0], destinationLatLng[1])
+            ],
+            lineOptions: {
+                styles: [{ color: 'blue', weight: 5 }]
+            },
+            routeWhileDragging: false,
+            show: false,
+            addWaypoints: false,
+            draggableWaypoints: false
+        }).addTo(map);
+        
+        // Optionally zoom to fit the route
+        map.fitBounds(L.latLngBounds([userLatLng, destinationLatLng]), { padding: [50, 50] });
+
+    }, function(error) {
+        alert("Unable to retrieve your location.");
+    });
+}
+
         function pop_MarSUAllBuildings_4(feature, layer) {
-            layer.on({
-                mouseout: function(e) {
-                    for (var i in e.target._eventParents) {
-                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
-                            e.target._eventParents[i].resetStyle(e.target);
-                        }
-                    }
-                },
-                mouseover: highlightFeature,
-            });
+    layer.on({
+        mouseout: function(e) {
+            for (var i in e.target. _eventParents) {
+                if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                    e.target._eventParents[i].resetStyle(e.target);
+                }
+            }
+        },
+        mouseover: highlightFeature,
+    });
+
+    const buildingName = feature.properties['Building Name'] || 'Unknown';
+    const buildingID = feature.properties['id'] || '';
+    const coords = feature.geometry.coordinates;
+
+    const popupContent = `
+        <strong>${buildingName}</strong><br/>
+        <button onclick="routeToBuilding([${coords[1]}, ${coords[0]}])" 
+            style="margin-top: 8px; padding: 5px 10px; background-color: #2d89ef; color: white; border: none; border-radius: 4px;">
+            📍 Locate
+        </button>
+    `;
+
+    layer.bindPopup(popupContent);
+}
+;
             var popupContent = '<table>\
                     <tr>\
                         <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
